@@ -1,0 +1,9 @@
+digraph G {
+ rankdir=LR; graph [bgcolor="white", pad=0.2, nodesep=0.25, ranksep=0.35];
+ node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10];
+ warm [label="WARM-UP\n30 tx/usuario\nsolo normal\nconstruye Bᵤ", fillcolor="#fff4cc", color="#c99700"];
+ train [label="TRAIN\n49 tx/usuario\nsolo normal\nfit sin y", fillcolor="#eef4f8", color="#54718f"];
+ val [label="VALIDATION\n10 tx/usuario\n2% ATO\ny_val: tuning + τ", fillcolor="#e9f7ef", color="#3f8f62"];
+ test [label="TEST\n11 tx/usuario\n2% ATO\nuna sola evaluación", fillcolor="#fdecec", color="#b85c5c"];
+ warm -> train -> val -> test;
+}

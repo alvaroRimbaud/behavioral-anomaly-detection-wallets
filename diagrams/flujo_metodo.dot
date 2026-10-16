@@ -1,0 +1,15 @@
+digraph G {
+ rankdir=LR; graph [bgcolor="white", pad=0.15, nodesep=0.22, ranksep=0.35, splines=ortho];
+ node [shape=box, style="rounded,filled", fontname="Arial", fontsize=9, color="#54718f", fillcolor="#eef4f8", width=1.35, height=0.62];
+ edge [fontname="Arial", fontsize=8, color="#627d98", arrowsize=0.7];
+ s [shape=oval,label="Config + seed",fillcolor="#fff4cc",color="#c99700",width=1.1];
+ a [label="F1\nSimulación"];
+ b [label="F2\nWarm-up\nBaseline Bᵤ"];
+ c [label="F3\nTrain limpio"];
+ d [label="F4\nATO val/test\nD y K"];
+ e [label="F5\n12 features\ncausales"];
+ f [label="F6\nIF / AE\n(+ LOF S8)"];
+ g [label="F7\nValidation\nτ + tuning"];
+ h [label="F8\nTest +\nreporte"];
+ s->a->b->c->d->e->f->g->h;
+}

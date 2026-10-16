@@ -1,0 +1,12 @@
+digraph G {
+ rankdir=LR; graph [bgcolor="white",pad=0.15,nodesep=0.28,ranksep=0.35];
+ node [shape=box,style="rounded,filled",fontname="Arial",fontsize=10,color="#54718f",fillcolor="#eef4f8"];
+ p [label="Problema\nAnomalías contextuales +\nfalta de datos reproducibles"];
+ o [label="Objetivo\nEvaluar IF vs AE\ncon contexto individual"];
+ r [label="Requisitos\nRF01–RF10\nRNF01–RNF07"];
+ c [label="Componentes\nE1–E6"];
+ d [label="Diseño PI7\nvariables · ecuaciones ·\npseudocódigo · E-P-S"];
+ x [label="Construcción S8\n30k tx/seed · 3 seeds\nIF/AE + LOF auxiliar"];
+ v [label="Validación\nPR-AUC · F1 · Recall\nintensidad · ablación"];
+ p->o->r->c->d->x->v;
+}

@@ -1,0 +1,18 @@
+{
+  "purpose": "Construcción inicial S8 / evidencia del examen parcial",
+  "seeds_executed": [42, 43, 44],
+  "n_users_per_seed": 300,
+  "transactions_per_user": 100,
+  "transactions_per_seed": 30000,
+  "warmup_per_user": 30,
+  "train_per_user": 49,
+  "validation_per_user": 10,
+  "test_per_user": 11,
+  "anomaly_rate_validation": 0.02,
+  "anomaly_rate_test": 0.02,
+  "baseline": "frozen after legitimate warm-up",
+  "training": "clean normal-only",
+  "feature_sets": {"raw": 6, "raw_plus_individualized": 12},
+  "primary_models": ["Isolation Forest", "Autoencoder"],
+  "auxiliary_baseline": "LOF"
+}

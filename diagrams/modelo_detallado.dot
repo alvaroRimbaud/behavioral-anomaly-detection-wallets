@@ -1,0 +1,24 @@
+digraph G {
+  rankdir=LR; graph [bgcolor="white", pad=0.2, nodesep=0.35, ranksep=0.55];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=10, color="#54718f", fillcolor="#eef4f8"];
+  edge [fontname="Arial", fontsize=9, color="#627d98"];
+  cfg [label="Configuración\nperfiles · semilla · horizonte", fillcolor="#fff4cc", color="#c99700"];
+  sim [label="E1 Simulación\ntransacciones normales + ATO\nground truth separado"];
+  warm [label="E2 Warm-up\n30 tx legítimas/usuario\nBaseline Bᵤ congelado"];
+  feat [label="E3 Feature engineering\n6 raw/contextuales\n+ 6 individualizadas\nsplit temporal"];
+  raw [label="Feature set A\nX_raw (6)"];
+  hyb [label="Feature set B\nX_raw+behavioral (12)", fillcolor="#e9f7ef", color="#3f8f62"];
+  ifm [label="E4a Isolation Forest\nmodelo global\nanomaly score"];
+  ae [label="E4b Autoencoder\n12→8→4→8→12\nreconstruction error"];
+  val [label="E5 Validación\nhiperparámetros + τ*\nsolo y_val"];
+  test [label="E6 Test\nPrecision · Recall · F1 · PR-AUC\nD · dimensión · feature_set"];
+  gt [label="Ground truth\nis_anomaly · D · K\nchanged_dimensions", fillcolor="#fdecec", color="#b85c5c"];
+  cfg -> sim; sim -> warm [label="warm-up"];
+  sim -> feat [label="post warm-up"];
+  warm -> feat [label="Bᵤ fijo"];
+  feat -> raw; feat -> hyb;
+  raw -> ifm; raw -> ae; hyb -> ifm; hyb -> ae;
+  ifm -> val; ae -> val; val -> test;
+  sim -> gt [style=dashed]; gt -> val [label="solo validación", style=dashed, color="#b85c5c"];
+  gt -> test [label="solo evaluación", style=dashed, color="#b85c5c"];
+}

@@ -1,0 +1,97 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+ENV/
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# Sistema operativo
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Build / paquetes
+# =========================
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# =========================
+# Logs y temporales
+# =========================
+*.log
+*.tmp
+*.temp
+*.bak
+
+# =========================
+# Outputs del experimento
+# =========================
+outputs/
+outputs_quick/
+outputs_seed*/
+outputs_*/
+
+# Si quieres conservar resultados de ejemplo,
+# utiliza una carpeta separada como:
+# examples/sample_report/
+
+# =========================
+# Datos generados localmente
+# =========================
+data/generated/
+data/temp/
+
+# =========================
+# Modelos / checkpoints
+# =========================
+*.pt
+*.pth
+*.ckpt
+
+# =========================
+# Cache de librerías
+# =========================
+.pytest_cache/
+.mypy_cache/
+.cache/
+
+# =========================
+# Variables de entorno
+# =========================
+.env
+.env.*
+
+# =========================
+# Archivos comprimidos
+# =========================
+*.zip
+*.rar
+*.7z
+
+# =========================
+# Archivos específicos no versionados
+# =========================
+GUIA_VIDEO_2_3_MIN.md
