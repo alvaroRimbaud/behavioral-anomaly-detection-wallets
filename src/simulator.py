@@ -159,6 +159,7 @@ def _generate_normal_rows(rng: np.random.Generator, profile: dict, phase: str, n
             "location_zone": locations_draw[i],
             "is_anomaly": 0,
             "anomaly_type": "normal",
+            "target_anomaly_intensity": 0.0,
             "anomaly_intensity": 0.0,
             "anomaly_breadth": 0,
             "changed_dimensions": "",
@@ -313,6 +314,7 @@ def _inject_anomalies(df: pd.DataFrame, baselines: Dict[str, dict], rng: np.rand
                 ]
                 df.loc[idx, "is_anomaly"] = 1
                 df.loc[idx, "anomaly_type"] = "ATO"
+                df.loc[idx, "target_anomaly_intensity"] = target
                 df.loc[idx, "anomaly_intensity"] = D
                 df.loc[idx, "anomaly_breadth"] = k
                 df.loc[idx, "changed_dimensions"] = "|".join(sorted(dims))
@@ -364,3 +366,24 @@ def simulate_transactions(config: SimulationConfig) -> Tuple[pd.DataFrame, pd.Da
     )
     profiles = pd.DataFrame(profile_rows)
     return df, profiles, baselines
+
+
+def simulator_assumptions(config: SimulationConfig) -> pd.DataFrame:
+    """Document simulator calibration choices and what must be sensitivity-tested.
+
+    Values without a direct empirical source are explicitly labelled as experimental
+    assumptions rather than being presented as properties of a real wallet platform.
+    """
+    rows = [
+        {"parameter": "transactions_per_user", "value": config.transactions_per_user, "basis": "design_choice", "sensitivity": "fixed protocol"},
+        {"parameter": "warmup_per_user", "value": config.warmup_per_user, "basis": "pilot/design choice", "sensitivity": "candidate 20/30/40 before final test"},
+        {"parameter": "anomaly_rate_validation", "value": config.anomaly_rate_val, "basis": "experimental assumption", "sensitivity": "report explicitly; not claimed as real fraud prevalence"},
+        {"parameter": "anomaly_rate_test", "value": config.anomaly_rate_test, "basis": "experimental assumption", "sensitivity": "report explicitly; not claimed as real fraud prevalence"},
+        {"parameter": "archetype_probabilities", "value": "low=.20; regular=.45; active=.25; night=.10", "basis": "experimental heterogeneity assumption", "sensitivity": "documented; future calibration with real/public evidence"},
+        {"parameter": "device_weights", "value": "primary=.91; secondary=.09", "basis": "experimental assumption", "sensitivity": "scenario sensitivity"},
+        {"parameter": "location_weights", "value": "habitual=.72; secondary=.20; occasional=.08", "basis": "experimental assumption", "sensitivity": "scenario sensitivity"},
+        {"parameter": "intensity_strata", "value": "[.18,.33], [.34,.66], [.67,.96]", "basis": "pre-registered descriptive design", "sensitivity": "D retained continuous; curve Recall vs D"},
+        {"parameter": "breadth_K", "value": "K=1/.48; K=2/.34; K=3/.18", "basis": "experimental assumption", "sensitivity": "report performance by K"},
+        {"parameter": "scenario", "value": "Account Takeover (ATO)", "basis": "thesis scope/literature", "sensitivity": "dimensions amount/hour/frequency/recipient/device/location"},
+    ]
+    return pd.DataFrame(rows)

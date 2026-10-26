@@ -94,6 +94,7 @@ def build_features(transactions: pd.DataFrame, baselines: Dict[str, dict]) -> Tu
                 "location_novelty_user": _novelty(b["location_counts"], str(r["location_zone"])),
                 "is_anomaly": int(r["is_anomaly"]),
                 "anomaly_type": str(r["anomaly_type"]),
+                "target_anomaly_intensity": float(r.get("target_anomaly_intensity", 0.0)),
                 "anomaly_intensity": float(r["anomaly_intensity"]),
                 "anomaly_breadth": int(r["anomaly_breadth"]),
                 "changed_dimensions": str(r["changed_dimensions"]),

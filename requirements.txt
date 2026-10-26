@@ -2,3 +2,6 @@ numpy>=2.0
 pandas>=2.2
 scikit-learn>=1.5
 torch>=2.2
+matplotlib>=3.9
+jupyter>=1.0
+nbclient>=0.10
