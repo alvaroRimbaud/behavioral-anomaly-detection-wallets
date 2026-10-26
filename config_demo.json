@@ -1,5 +1,12 @@
 {
-  "seed": 42,
+  "purpose": "Configuración planificada para experimento definitivo",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46
+  ],
   "n_users": 1000,
   "transactions_per_user": 100,
   "warmup_per_user": 30,
@@ -10,10 +17,25 @@
   "anomaly_rate_test": 0.02,
   "baseline": "frozen after legitimate warm-up",
   "training": "clean normal-only",
-  "primary_models": ["Isolation Forest", "Autoencoder"],
-  "auxiliary_baseline": "Local Outlier Factor (LOF)",
+  "ae_early_stopping": "normal-only temporal holdout inside train",
+  "primary_models": [
+    "Isolation Forest",
+    "Autoencoder"
+  ],
+  "formal_baseline": "Local Outlier Factor (LOF)",
   "feature_sets": {
     "raw": 6,
     "raw_plus_individualized": 12
-  }
+  },
+  "hyperparameter_search": "full validation-based grid",
+  "threshold_reference": "F1-optimal on validation; frozen on test",
+  "alert_budgets": [
+    0.005,
+    0.01,
+    0.02,
+    0.05
+  ],
+  "bootstrap_iterations": 1000,
+  "intensity_D": "continuous; Recall vs D",
+  "breadth_K": "number of changed dimensions"
 }

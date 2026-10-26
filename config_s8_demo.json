@@ -1,6 +1,10 @@
 {
-  "purpose": "Construcción inicial S8 / evidencia del examen parcial",
-  "seeds_executed": [42, 43, 44],
+  "purpose": "Construcción S8 y levantamiento de observaciones del examen parcial",
+  "seeds_executed_initially": [
+    42,
+    43,
+    44
+  ],
   "n_users_per_seed": 300,
   "transactions_per_user": 100,
   "transactions_per_seed": 30000,
@@ -12,7 +16,24 @@
   "anomaly_rate_test": 0.02,
   "baseline": "frozen after legitimate warm-up",
   "training": "clean normal-only",
-  "feature_sets": {"raw": 6, "raw_plus_individualized": 12},
-  "primary_models": ["Isolation Forest", "Autoencoder"],
-  "auxiliary_baseline": "LOF"
+  "ae_early_stopping": "normal-only temporal holdout inside train",
+  "threshold_reference": "max F1 on external validation; frozen on test",
+  "alert_budgets": [
+    0.005,
+    0.01,
+    0.02,
+    0.05
+  ],
+  "feature_sets": {
+    "raw": 6,
+    "raw_plus_individualized": 12
+  },
+  "primary_models": [
+    "Isolation Forest",
+    "Autoencoder"
+  ],
+  "formal_baseline": "LOF",
+  "tuning_profile_for_demo": "quick",
+  "continuous_intensity_analysis": "Recall vs D in fixed-width bins",
+  "paired_bootstrap": 1000
 }
