@@ -1,0 +1,11 @@
+parameter,value,basis,sensitivity
+transactions_per_user,100,design_choice,fixed protocol
+warmup_per_user,30,pilot/design choice,candidate 20/30/40 before final test
+anomaly_rate_validation,0.02,experimental assumption,report explicitly; not claimed as real fraud prevalence
+anomaly_rate_test,0.02,experimental assumption,report explicitly; not claimed as real fraud prevalence
+archetype_probabilities,low=.20; regular=.45; active=.25; night=.10,experimental heterogeneity assumption,documented; future calibration with real/public evidence
+device_weights,primary=.91; secondary=.09,experimental assumption,scenario sensitivity
+location_weights,habitual=.72; secondary=.20; occasional=.08,experimental assumption,scenario sensitivity
+intensity_strata,"[.18,.33], [.34,.66], [.67,.96]",pre-registered descriptive design,D retained continuous; curve Recall vs D
+breadth_K,K=1/.48; K=2/.34; K=3/.18,experimental assumption,report performance by K
+scenario,Account Takeover (ATO),thesis scope/literature,dimensions amount/hour/frequency/recipient/device/location

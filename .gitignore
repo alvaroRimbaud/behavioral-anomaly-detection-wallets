@@ -95,3 +95,7 @@ data/temp/
 # Archivos específicos no versionados
 # =========================
 GUIA_VIDEO_2_3_MIN.md
+
+# Evidencia compacta de corridas verificables se versiona intencionalmente
+!evidence/
+!evidence/**
