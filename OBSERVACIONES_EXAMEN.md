@@ -15,3 +15,10 @@ Este archivo vincula las observaciones del docente con cambios verificables del 
 ## Regla de cierre
 
 Una observación que depende de cinco semillas, sensibilidad o resultados definitivos solo puede marcarse como **levantada** después de ejecutar la corrida correspondiente y registrar la evidencia resultante. El código preparado no debe confundirse con un resultado ya ejecutado.
+
+## Ajuste posterior a la revisión PI9 + PI10 (PI11 + PI12)
+
+- El bootstrap pareado fue corregido para remuestrear **usuarios completos** (bootstrap por conglomerados), no transacciones individuales. El archivo `paired_bootstrap_pr_auc.csv` registra `bootstrap_unit=user` y `n_clusters`.
+- Se añadió `d50_estimates.csv`, donde D50 se define como la intensidad D a partir de la cual la curva Recall-vs-D alcanza 0.50, con interpolación lineal entre bins adyacentes. Este indicador se utilizará de forma comparativa entre IF, Autoencoder y LOF; un D50 menor implica sensibilidad frente a anomalías menos intensas.
+- `run_multiseed.py` consolida D50 por semilla en `d50_all_seeds.csv` y `d50_summary.csv`.
+- La corrida definitiva continúa planificada con 1 000 usuarios x 5 semillas. La sensibilidad del simulador permanece pendiente de ejecución definitiva; `run_sensitivity.py` contiene los escenarios de warm-up 20/30/40 y prevalencia 1/2/5 %.

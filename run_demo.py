@@ -35,6 +35,7 @@ from src.evaluation import (
     threshold_candidates,
     precision_at_alert_budgets,
     paired_bootstrap_pr_auc,
+    estimate_d50_from_curve,
 )
 from src.report import build_report
 
@@ -294,6 +295,16 @@ def run(
     intensity = pd.concat(all_intensity, ignore_index=True)
     dimensions = pd.concat(all_dimensions, ignore_index=True)
     curve = pd.concat(all_curve, ignore_index=True)
+    d50_rows = []
+    for short, model_name in model_keys.items():
+        sub = curve[curve["model"] == short].copy()
+        d50 = estimate_d50_from_curve(sub)
+        d50_rows.append({
+            "model": model_name,
+            "feature_set": "raw+individualizadas",
+            **d50,
+        })
+    d50_df = pd.DataFrame(d50_rows)
     hyper_search_df = pd.concat(hyper_search, ignore_index=True)
     threshold_search_df = pd.concat(threshold_search, ignore_index=True)
     budgets_df = pd.concat(budgets, ignore_index=True)
@@ -309,11 +320,13 @@ def run(
         ("LOF_hybrid_vs_raw", ("LOF baseline", "raw+individualizadas"), ("LOF baseline", "raw")),
     ]
     bootstrap_rows = []
+    test_user_ids = test["user_id"].to_numpy()
     for j, (label, a, b) in enumerate(comparisons):
         res = paired_bootstrap_pr_auc(
             y_test,
             score_store[a],
             score_store[b],
+            cluster_ids=test_user_ids,
             n_bootstrap=bootstrap_iterations,
             seed=config.seed * 100 + j,
         )
@@ -341,6 +354,7 @@ def run(
     intensity.to_csv(output_dir / "metrics_by_intensity.csv", index=False)
     dimensions.to_csv(output_dir / "metrics_by_dimension.csv", index=False)
     curve.to_csv(output_dir / "recall_vs_D.csv", index=False)
+    d50_df.to_csv(output_dir / "d50_estimates.csv", index=False)
     hyper_search_df.to_csv(output_dir / "hyperparameter_search.csv", index=False)
     threshold_search_df.to_csv(output_dir / "threshold_candidates_validation.csv", index=False)
     budgets_df.to_csv(output_dir / "precision_at_k.csv", index=False)
@@ -375,6 +389,8 @@ def run(
         "model_policy": "Isolation Forest and Autoencoder are thesis core models; LOF is a formal comparison baseline.",
         "tuning_profile": tuning,
         "bootstrap_iterations": int(bootstrap_iterations),
+        "bootstrap_unit": "user",
+        "d50_definition": "First fixed-D recall curve crossing of 0.50, linearly interpolated between adjacent bin midpoints.",
         "simulation_seconds": t_sim,
         "temporal_assertion": "train_max < validation_min and validation_max < test_min",
     }

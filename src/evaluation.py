@@ -178,37 +178,115 @@ def stratified_metrics(pred_df: pd.DataFrame, model_col: str) -> Tuple[pd.DataFr
     return pd.DataFrame(intensity_rows), pd.DataFrame(dim_rows)
 
 
-def paired_bootstrap_pr_auc(
+def paired_cluster_bootstrap_pr_auc(
     y_true: np.ndarray,
     scores_a: np.ndarray,
     scores_b: np.ndarray,
+    cluster_ids: np.ndarray,
     n_bootstrap: int = 1000,
     seed: int = 2026,
 ) -> Dict[str, float]:
-    """Paired bootstrap CI for ΔPR-AUC = A - B on the same test observations."""
+    """Clustered paired bootstrap CI for ΔPR-AUC = A - B.
+
+    The resampling unit is the user, not the individual transaction. All test
+    transactions belonging to a sampled user receive the same bootstrap
+    multiplicity. This preserves within-user dependence and avoids intervals
+    that are artificially narrow when multiple transactions come from the same
+    person.
+    """
     y_true = np.asarray(y_true, dtype=int)
     scores_a = np.asarray(scores_a, dtype=float)
     scores_b = np.asarray(scores_b, dtype=float)
-    if not (len(y_true) == len(scores_a) == len(scores_b)):
-        raise ValueError("Paired bootstrap arrays must have equal length.")
+    cluster_ids = np.asarray(cluster_ids)
+    if not (len(y_true) == len(scores_a) == len(scores_b) == len(cluster_ids)):
+        raise ValueError("Cluster bootstrap arrays must have equal length.")
+
     point = float(average_precision_score(y_true, scores_a) - average_precision_score(y_true, scores_b))
+    unique_clusters, inverse = np.unique(cluster_ids, return_inverse=True)
+    n_clusters = len(unique_clusters)
+    if n_clusters < 2:
+        raise ValueError("Cluster bootstrap requires at least two users/clusters.")
+
     rng = np.random.default_rng(seed)
     diffs = []
-    n = len(y_true)
     for _ in range(int(n_bootstrap)):
-        idx = rng.integers(0, n, size=n)
-        yb = y_true[idx]
-        if len(np.unique(yb)) < 2:
+        sampled = rng.integers(0, n_clusters, size=n_clusters)
+        multiplicities = np.bincount(sampled, minlength=n_clusters).astype(float)
+        row_weights = multiplicities[inverse]
+        pos_w = float(row_weights[y_true == 1].sum())
+        neg_w = float(row_weights[y_true == 0].sum())
+        if pos_w <= 0 or neg_w <= 0:
             continue
-        diffs.append(
-            float(average_precision_score(yb, scores_a[idx]) - average_precision_score(yb, scores_b[idx]))
-        )
+        a = average_precision_score(y_true, scores_a, sample_weight=row_weights)
+        b = average_precision_score(y_true, scores_b, sample_weight=row_weights)
+        diffs.append(float(a - b))
+
     if not diffs:
-        return {"delta_pr_auc": point, "ci95_low": float("nan"), "ci95_high": float("nan"), "n_bootstrap_valid": 0}
+        return {
+            "delta_pr_auc": point,
+            "ci95_low": float("nan"),
+            "ci95_high": float("nan"),
+            "n_bootstrap_valid": 0,
+            "bootstrap_unit": "user",
+            "n_clusters": int(n_clusters),
+        }
     lo, hi = np.quantile(np.asarray(diffs), [0.025, 0.975])
     return {
         "delta_pr_auc": point,
         "ci95_low": float(lo),
         "ci95_high": float(hi),
         "n_bootstrap_valid": int(len(diffs)),
+        "bootstrap_unit": "user",
+        "n_clusters": int(n_clusters),
     }
+
+
+def estimate_d50_from_curve(curve: pd.DataFrame) -> Dict[str, float]:
+    """Estimate D50: anomaly intensity at which recall first reaches 0.50.
+
+    Uses the pre-defined fixed-width Recall-vs-D curve. If recall crosses 0.50
+    between adjacent bins, a linear interpolation between bin midpoints is used.
+    If the observed curve never reaches 0.50, D50 is reported as NaN.
+    """
+    if curve.empty:
+        return {"d50": float("nan"), "max_recall": float("nan"), "n_anomalies": 0}
+    d = curve.sort_values("D_mid").copy()
+    x = d["D_mid"].to_numpy(float)
+    y = d["recall"].to_numpy(float)
+    n = int(d["n_anomalies"].sum())
+    hits = np.flatnonzero(y >= 0.50)
+    if len(hits) == 0:
+        return {"d50": float("nan"), "max_recall": float(np.max(y)), "n_anomalies": n}
+    j = int(hits[0])
+    if j == 0:
+        d50 = float(x[0])
+    else:
+        x0, x1 = float(x[j - 1]), float(x[j])
+        y0, y1 = float(y[j - 1]), float(y[j])
+        if y1 == y0:
+            d50 = x1
+        else:
+            frac = (0.50 - y0) / (y1 - y0)
+            frac = min(1.0, max(0.0, frac))
+            d50 = x0 + frac * (x1 - x0)
+    return {"d50": float(d50), "max_recall": float(np.max(y)), "n_anomalies": n}
+
+
+# Backward-compatible name retained for older notebooks; it now requires
+# cluster_ids so that users, rather than individual transactions, are resampled.
+def paired_bootstrap_pr_auc(
+    y_true: np.ndarray,
+    scores_a: np.ndarray,
+    scores_b: np.ndarray,
+    cluster_ids: np.ndarray,
+    n_bootstrap: int = 1000,
+    seed: int = 2026,
+) -> Dict[str, float]:
+    return paired_cluster_bootstrap_pr_auc(
+        y_true=y_true,
+        scores_a=scores_a,
+        scores_b=scores_b,
+        cluster_ids=cluster_ids,
+        n_bootstrap=n_bootstrap,
+        seed=seed,
+    )

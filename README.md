@@ -85,3 +85,7 @@ Evalúa configuraciones de warm-up (20/30/40) y prevalencia sintética (1/2/5 %)
 - El conjunto test no selecciona hiperparámetros ni threshold.
 - Un anomaly score alto se interpreta de manera uniforme como mayor anomalía, aunque las escalas entre modelos no se comparan directamente.
 - Los resultados sintéticos no se presentan como desempeño productivo en Yape, Plin u otra plataforma real.
+
+### Ajustes para PI11 + PI12
+
+La validación definitiva usa bootstrap pareado **por usuario** para respetar la dependencia entre transacciones de una misma persona. Además, el pipeline exporta `d50_estimates.csv`: D50 es el punto de intensidad conductual en el que Recall alcanza 0.50 en la curva Recall-vs-D. `run_multiseed.py` consolida la estabilidad de D50, thresholds e hiperparámetros entre semillas.

@@ -13,26 +13,31 @@ def aggregate(root: Path, seeds: list[int]) -> None:
     budgets_all = []
     bootstrap_all = []
     selected_all = []
+    d50_all = []
     for seed in seeds:
         out = root / f"seed_{seed}"
         m = pd.read_csv(out / "metrics_global.csv").assign(seed=seed)
         b = pd.read_csv(out / "precision_at_k.csv").assign(seed=seed)
         bp = pd.read_csv(out / "paired_bootstrap_pr_auc.csv").assign(seed=seed)
         sc = pd.read_csv(out / "selected_hyperparameters.csv").assign(seed=seed)
+        d50 = pd.read_csv(out / "d50_estimates.csv").assign(seed=seed)
         metrics_all.append(m)
         budgets_all.append(b)
         bootstrap_all.append(bp)
         selected_all.append(sc)
+        d50_all.append(d50)
 
     metrics = pd.concat(metrics_all, ignore_index=True)
     budgets = pd.concat(budgets_all, ignore_index=True)
     boot = pd.concat(bootstrap_all, ignore_index=True)
     selected = pd.concat(selected_all, ignore_index=True)
+    d50 = pd.concat(d50_all, ignore_index=True)
 
     metrics.to_csv(root / "metrics_all_seeds.csv", index=False)
     budgets.to_csv(root / "precision_at_k_all_seeds.csv", index=False)
     boot.to_csv(root / "bootstrap_all_seeds.csv", index=False)
     selected.to_csv(root / "selected_hyperparameters_all_seeds.csv", index=False)
+    d50.to_csv(root / "d50_all_seeds.csv", index=False)
 
     metric_summary = metrics.groupby(["model", "feature_set"], as_index=False).agg(
         pr_auc_mean=("pr_auc", "mean"),
@@ -65,6 +70,16 @@ def aggregate(root: Path, seeds: list[int]) -> None:
         n_seeds=("seed", "nunique"),
     )
     bootstrap_summary.to_csv(root / "bootstrap_summary.csv", index=False)
+
+    d50_summary = d50.groupby(["model", "feature_set"], as_index=False).agg(
+        d50_mean=("d50", "mean"),
+        d50_std=("d50", "std"),
+        d50_min=("d50", "min"),
+        d50_max=("d50", "max"),
+        max_recall_mean=("max_recall", "mean"),
+        n_seeds=("seed", "nunique"),
+    )
+    d50_summary.to_csv(root / "d50_summary.csv", index=False)
 
 
 def parse_args() -> argparse.Namespace:
