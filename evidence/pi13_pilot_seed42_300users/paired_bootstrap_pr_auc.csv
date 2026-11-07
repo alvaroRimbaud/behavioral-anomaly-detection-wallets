@@ -1,0 +1,7 @@
+delta_pr_auc,ci95_low,ci95_high,n_bootstrap_valid,bootstrap_unit,n_clusters,comparison,A,B
+0.19153570985992704,0.10039762579722879,0.27964384131621545,100,user,300,AE_hybrid_vs_IF_hybrid,Autoencoder | raw+individualizadas,Isolation Forest | raw+individualizadas
+0.018592101958440355,-0.008502785138139428,0.05581500076945995,100,user,300,AE_hybrid_vs_LOF_hybrid,Autoencoder | raw+individualizadas,LOF baseline | raw+individualizadas
+-0.1729436079014867,-0.23994854359360357,-0.0712130005774183,100,user,300,IF_hybrid_vs_LOF_hybrid,Isolation Forest | raw+individualizadas,LOF baseline | raw+individualizadas
+0.13925232467075827,0.09793226463543633,0.23998780427840796,100,user,300,IF_hybrid_vs_raw,Isolation Forest | raw+individualizadas,Isolation Forest | raw
+0.29509322493387813,0.16125197650223566,0.3969916070792751,100,user,300,AE_hybrid_vs_raw,Autoencoder | raw+individualizadas,Autoencoder | raw
+0.3157891322898058,0.1916944730286234,0.420750818230256,100,user,300,LOF_hybrid_vs_raw,LOF baseline | raw+individualizadas,LOF baseline | raw

@@ -18,6 +18,8 @@ def set_seed(seed: int) -> None:
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
+    # Avoid excessive CPU thread oversubscription on shared and laptop hardware.
+    torch.set_num_threads(1)
     try:
         torch.use_deterministic_algorithms(True)
     except Exception:
@@ -185,7 +187,7 @@ def fit_iforest(X_train: np.ndarray, seed: int = 42, config: IFConfig | None = N
         max_features=cfg.max_features,
         contamination="auto",
         random_state=seed,
-        n_jobs=-1,
+        n_jobs=1,
     )
     model.fit(X_train)
     return model
@@ -204,7 +206,7 @@ def fit_lof(X_train: np.ndarray, config: LOFConfig | None = None) -> Tuple[Local
         n_neighbors=cfg.n_neighbors,
         novelty=True,
         contamination="auto",
-        n_jobs=-1,
+        n_jobs=1,
     )
     model.fit(Xs)
     return model, scaler

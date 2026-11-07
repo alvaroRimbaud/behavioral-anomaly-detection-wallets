@@ -89,6 +89,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output", type=Path, default=Path("outputs_final_5seeds"))
     p.add_argument("--tuning", choices=["off", "quick", "full"], default="full")
     p.add_argument("--bootstrap", type=int, default=1000)
+    p.add_argument("--resume", action="store_true", help="Reutiliza semillas completas ya generadas.")
     return p.parse_args()
 
 
@@ -98,6 +99,9 @@ if __name__ == "__main__":
     for seed in args.seeds:
         print(f"\n=== Seed {seed} ===")
         cfg = SimulationConfig(n_users=args.users, seed=seed)
+        if args.resume and (args.output / f"seed_{seed}" / "run_summary.json").exists():
+            print(f"Seed {seed}: evidencia existente, se omite.", flush=True)
+            continue
         run(
             cfg,
             args.output / f"seed_{seed}",

@@ -1,0 +1,4 @@
+model,feature_set,d50,max_recall,n_anomalies
+Isolation Forest,raw+individualizadas,0.5916666666666667,1.0,66
+Autoencoder,raw+individualizadas,0.42,1.0,66
+LOF baseline,raw+individualizadas,0.6499999999999999,1.0,66
