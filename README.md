@@ -89,3 +89,19 @@ Evalúa configuraciones de warm-up (20/30/40) y prevalencia sintética (1/2/5 %)
 ### Ajustes para PI11 + PI12
 
 La validación definitiva usa bootstrap pareado **por usuario** para respetar la dependencia entre transacciones de una misma persona. Además, el pipeline exporta `d50_estimates.csv`: D50 es el punto de intensidad conductual en el que Recall alcanza 0.50 en la curva Recall-vs-D. `run_multiseed.py` consolida la estabilidad de D50, thresholds e hiperparámetros entre semillas.
+
+## Revisión PI13–PI14 del asesor: O1 y O2 (10-11-2026)
+
+**O1 — Multisemilla y recursos:** `run_multiseed.py --resume` comprueba presencia de evidencia completa y coincidencia de seed, muestra, tuning y bootstrap antes de reutilizar cualquier corrida. Genera `scores_test_all_models.csv` para auditoría independiente de las seis combinaciones modelo/representación. La alternativa **500 usuarios × 5 semillas** se define previamente como desviación por recursos y se inicia con `run_final_feasible_500x5.bat`, no se selecciona por sus resultados. Si la escala original es factible, mantener 1000×5. Consultar [protocolo O1](docs/PROTOCOLO_FINAL_O1.md).
+
+**O2 — Riesgo por construcción:** la [matriz explícita](docs/MECANISMOS_SIMULADOR_VS_FEATURES.md) documenta cómo la inyección afecta exactamente las features del baseline y el riesgo de circularidad. Se incluye [guía para contraste en MoMTSim independiente](docs/VALIDACION_EXTERNA_MOMTSIM.md) y `run_external_validation.py`. El challenge usa **las etiquetas originales**, no invoca el simulador T12, separa pasos temporales y utiliza solamente 6 raw + 4 individualizadas observables y, para viabilidad local, una muestra reproducible del 5 % de usuarios del CSV original (sin consultar etiquetas). Es externo respecto del generador, pero sigue siendo un dataset **sintético**. El CSV original se debe descargar de Mendeley; **no se incluye** en el repo y no se atribuyen resultados externos hasta su ejecución verificada.
+
+**Intensidad y D50:** los objetivos de intensidad baja/media/alta se balancean a priori por fase, mientras que la intensidad conseguida D permanece libre y se reporta en `intensity_target_support.csv`. D50 no se estima si no alcanza Recall de 0.5 o las bandas de cruce no contienen al menos diez anomalías cada una. Un `NaN` no se rellena ni se considera fallo del software.
+
+**Rigor estadístico:** `bootstrap_summary.csv` solo consolida diferencias medias entre semillas; **no promedia límites de intervalos de confianza**. `analyze_pi14.py` calcula adicionalmente una prueba exacta bilateral por semilla y explica que con cinco semillas su menor valor p posible es 0.0625. No se declara significancia a 5 % a partir de un test que no puede alcanzarla.
+
+**Comprobar integridad:** `python -m unittest discover -s tests -v`; tests para fuentes externas, exclusión de etiquetas, bandas target, D50 y `--resume`. La prueba sobre CSV sintético de `tests/fixtures/` es solamente **smoke de formato**, no valida O2.
+
+## Integración PI15 — adquisición de fuente independiente (23/11/2026)
+
+Se agrega `download_momtsim_original.py` para consultar metadatos oficiales del depósito Mendeley Data v2 y producir una ficha SHA-256. La validación externa **NO** se considera ejecutada por instalar el script ni por correr pruebas de esquema. Debe obtenerse el CSV original, registrarse su procedencia y ejecutar `run_external_validation.py` con etiquetas originales (véase `docs/VALIDACION_EXTERNA_MOMTSIM.md`). En esta versión, la suite local incluye 10 pruebas metodológicas y de adquisición. Los archivos docentes PI15 y tesis revisada se distribuyen en un paquete aparte y no en el código productivo.

@@ -241,7 +241,7 @@ def paired_cluster_bootstrap_pr_auc(
     }
 
 
-def estimate_d50_from_curve(curve: pd.DataFrame) -> Dict[str, float]:
+def estimate_d50_from_curve(curve: pd.DataFrame, min_per_bin: int = 10) -> Dict[str, float]:
     """Estimate D50: anomaly intensity at which recall first reaches 0.50.
 
     Uses the pre-defined fixed-width Recall-vs-D curve. If recall crosses 0.50
@@ -254,10 +254,15 @@ def estimate_d50_from_curve(curve: pd.DataFrame) -> Dict[str, float]:
     x = d["D_mid"].to_numpy(float)
     y = d["recall"].to_numpy(float)
     n = int(d["n_anomalies"].sum())
-    hits = np.flatnonzero(y >= 0.50)
+    counts = d["n_anomalies"].to_numpy(int)
+    hits = np.flatnonzero((y >= 0.50) & (counts >= min_per_bin))
     if len(hits) == 0:
-        return {"d50": float("nan"), "max_recall": float(np.max(y)), "n_anomalies": n}
+        return {"d50": float("nan"), "max_recall": float(np.max(y)),
+                "n_anomalies": n, "d50_status": "sin_cruce_con_soporte_suficiente"}
     j = int(hits[0])
+    if j > 0 and counts[j-1] < min_per_bin:
+        return {"d50": float("nan"), "max_recall": float(np.max(y)),
+                "n_anomalies": n, "d50_status": "banda_previa_insuficiente"}
     if j == 0:
         d50 = float(x[0])
     else:
@@ -269,7 +274,8 @@ def estimate_d50_from_curve(curve: pd.DataFrame) -> Dict[str, float]:
             frac = (0.50 - y0) / (y1 - y0)
             frac = min(1.0, max(0.0, frac))
             d50 = x0 + frac * (x1 - x0)
-    return {"d50": float(d50), "max_recall": float(np.max(y)), "n_anomalies": n}
+    return {"d50": float(d50), "max_recall": float(np.max(y)),
+            "n_anomalies": n, "d50_status": "estimado_exploratorio_con_soporte"}
 
 
 # Backward-compatible name retained for older notebooks; it now requires

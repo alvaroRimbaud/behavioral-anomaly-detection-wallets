@@ -1,0 +1,9 @@
+{
+  "n_seeds_complete": 1,
+  "n_users_per_seed": 40,
+  "tuning_profile": "off",
+  "bootstrap_iterations": 20,
+  "same_conditions": true,
+  "is_definitive": false,
+  "note": "Definitivo solo con escala preregistrada y desviación documentada si <1000 usuarios; p bilateral exacto de 5 semillas no puede ser <.05. No inferir con is_definitive=false."
+}

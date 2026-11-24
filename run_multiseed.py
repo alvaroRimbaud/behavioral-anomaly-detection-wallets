@@ -1,11 +1,37 @@
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 import pandas as pd
 
 from run_demo import run
 from src.simulator import SimulationConfig
+
+
+REQUIRED_SEED_FILES = [
+    "run_summary.json", "metrics_global.csv", "precision_at_k.csv",
+    "paired_bootstrap_pr_auc.csv", "selected_hyperparameters.csv",
+    "d50_estimates.csv", "scores_test_all_models.csv", "hyperparameter_search.csv",
+    "simulator_assumptions.csv", "reporte_demo.html",
+]
+
+
+def completed_seed(out: Path, *, seed: int, users: int, tuning: str, bootstrap: int) -> bool:
+    """Guard --resume against incomplete outputs or a changed experimental plan."""
+    if any(not (out / filename).is_file() or (out / filename).stat().st_size == 0
+           for filename in REQUIRED_SEED_FILES):
+        return False
+    try:
+        meta = json.loads((out / "run_summary.json").read_text(encoding="utf-8"))
+        return (meta.get("seed") == seed and meta.get("n_users") == users
+                and meta.get("tuning_profile") == tuning
+                and meta.get("bootstrap_iterations") == bootstrap
+                and meta.get("bootstrap_unit") == "user"
+                and meta.get("train_anomalies") == 0
+                and meta.get("raw_features") == 6 and meta.get("hybrid_features") == 12)
+    except (ValueError, KeyError, OSError):
+        return False
 
 
 def aggregate(root: Path, seeds: list[int]) -> None:
@@ -62,13 +88,15 @@ def aggregate(root: Path, seeds: list[int]) -> None:
     )
     budget_summary.to_csv(root / "precision_at_k_summary.csv", index=False)
 
+    # WARNING: averaging within-seed CI endpoints is NOT a valid aggregate CI.
+    # Aggregate point effects across seeds here; analyze_pi14.py performs the
+    # seed-aware inferential analysis (and records small-n limitations).
     bootstrap_summary = boot.groupby("comparison", as_index=False).agg(
         delta_pr_auc_mean=("delta_pr_auc", "mean"),
         delta_pr_auc_std=("delta_pr_auc", "std"),
-        ci95_low_mean=("ci95_low", "mean"),
-        ci95_high_mean=("ci95_high", "mean"),
         n_seeds=("seed", "nunique"),
     )
+    bootstrap_summary["note"] = "Descriptivo; no promediar límites IC por semilla"
     bootstrap_summary.to_csv(root / "bootstrap_summary.csv", index=False)
 
     d50_summary = d50.groupby(["model", "feature_set"], as_index=False).agg(
@@ -99,9 +127,14 @@ if __name__ == "__main__":
     for seed in args.seeds:
         print(f"\n=== Seed {seed} ===")
         cfg = SimulationConfig(n_users=args.users, seed=seed)
-        if args.resume and (args.output / f"seed_{seed}" / "run_summary.json").exists():
-            print(f"Seed {seed}: evidencia existente, se omite.", flush=True)
+        out = args.output / f"seed_{seed}"
+        if args.resume and completed_seed(out, seed=seed, users=args.users,
+                                          tuning=args.tuning, bootstrap=args.bootstrap):
+            print(f"Seed {seed}: evidencia COMPLETA y compatible; se reutiliza.", flush=True)
             continue
+        if args.resume and out.exists():
+            print(f"Seed {seed}: resultado incompleto o parámetros distintos; se vuelve a ejecutar.",flush=True)
+            (out / "run_summary.json").unlink(missing_ok=True)
         run(
             cfg,
             args.output / f"seed_{seed}",

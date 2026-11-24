@@ -1,0 +1,30 @@
+{
+  "status": "SCHEMA_SMOKE_OR_SUBSAMPLE_NOT_EXTERNAL_VALIDATION",
+  "dataset": "momtsim",
+  "source_file_sha256": "b09994ba0db6b8dfd7620bb9fe4884e0c43233b11b1a3418a8b86780aa01a09a",
+  "source_path": "tests/fixtures/INDEPENDENT_SCHEMA_SMOKE_NOT_EXTERNAL.csv",
+  "original_labels_used_for_test": true,
+  "seed": 42,
+  "tuning": "off",
+  "bootstrap_iterations": 20,
+  "min_warmup": 3,
+  "max_rows": 0,
+  "early_stopping_policy": "unlabelled internal train holdout; possibly contaminated",
+  "training_policy": "unlabelled external train may contain original fraud; no label-based filtering",
+  "original_data_source_attested_by_executor": false,
+  "external_validation_accepted": false,
+  "not_real_peruvian_wallet_data": true,
+  "original_rows": 2400,
+  "retained_rows": 2400,
+  "n_users_with_warmup": 40,
+  "n_user_coverage": 1.0,
+  "fraud_in_train_audit_only": 0,
+  "fraud_in_validation": 32,
+  "fraud_in_test": 30,
+  "n_features_raw": 6,
+  "n_features_hybrid": 10,
+  "missing_from_original_t12": [
+    "device_novelty_user",
+    "location_novelty_user"
+  ]
+}

@@ -1,0 +1,4 @@
+model,feature_set,d50,max_recall,n_anomalies,d50_status
+Isolation Forest,raw+individualizadas,,1.0,9,sin_cruce_con_soporte_suficiente
+Autoencoder,raw+individualizadas,,1.0,9,sin_cruce_con_soporte_suficiente
+LOF baseline,raw+individualizadas,,1.0,9,sin_cruce_con_soporte_suficiente

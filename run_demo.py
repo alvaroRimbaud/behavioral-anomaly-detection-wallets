@@ -270,7 +270,7 @@ def run(
     # Stratified analysis and continuous Recall-vs-D use the hybrid representation.
     base_cols = [
         "transaction_id", "user_id", "timestamp", "is_anomaly", "anomaly_type",
-        "target_anomaly_intensity", "anomaly_intensity", "anomaly_breadth", "changed_dimensions",
+        "target_anomaly_intensity", "target_intensity_band", "anomaly_intensity", "anomaly_breadth", "changed_dimensions",
     ]
     model_keys = {"if": "Isolation Forest", "ae": "Autoencoder", "lof": "LOF baseline"}
     hybrid_predictions = test[base_cols].copy()
@@ -355,11 +355,26 @@ def run(
     dimensions.to_csv(output_dir / "metrics_by_dimension.csv", index=False)
     curve.to_csv(output_dir / "recall_vs_D.csv", index=False)
     d50_df.to_csv(output_dir / "d50_estimates.csv", index=False)
+    # Target quotas are defined ex ante. Achieved D is measured independently.
+    anomalies_target = transactions.loc[transactions["is_anomaly"] == 1].copy()
+    anomalies_target.groupby(["phase", "target_intensity_band"], as_index=False).agg(
+        n_anomalies=("is_anomaly", "size"),
+        target_D_min=("target_anomaly_intensity", "min"),
+        target_D_max=("target_anomaly_intensity", "max"),
+        achieved_D_mean=("anomaly_intensity", "mean"),
+    ).to_csv(output_dir / "intensity_target_support.csv", index=False)
     hyper_search_df.to_csv(output_dir / "hyperparameter_search.csv", index=False)
     threshold_search_df.to_csv(output_dir / "threshold_candidates_validation.csv", index=False)
     budgets_df.to_csv(output_dir / "precision_at_k.csv", index=False)
     selected_configs_df.to_csv(output_dir / "selected_hyperparameters.csv", index=False)
     bootstrap_df.to_csv(output_dir / "paired_bootstrap_pr_auc.csv", index=False)
+    # Persist ALL test scores for independently auditable paired comparisons.
+    score_export = test[["transaction_id", "user_id", "timestamp", "is_anomaly"]].copy()
+    for (m_name, fs), arr in score_store.items():
+        key = {"Isolation Forest":"IF", "Autoencoder":"AE", "LOF baseline":"LOF"}[m_name]
+        key += "_raw" if fs == "raw" else "_hybrid"
+        score_export[f"score_{key}"] = arr
+    score_export.to_csv(output_dir / "scores_test_all_models.csv", index=False)
     hybrid_predictions.to_csv(output_dir / "predictions_test.csv", index=False)
     alerts.head(200).to_csv(output_dir / "top_alerts.csv", index=False)
     simulator_assumptions(config).to_csv(output_dir / "simulator_assumptions.csv", index=False)
@@ -394,7 +409,6 @@ def run(
         "simulation_seconds": t_sim,
         "temporal_assertion": "train_max < validation_min and validation_max < test_min",
     }
-    (output_dir / "run_summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     report_path = build_report(
         output_dir,
         summary,
@@ -408,6 +422,12 @@ def run(
         selected_configs=selected_configs_df,
     )
 
+    # Completion sentinel is written LAST and atomically; an interrupted run
+    # must never be reused as complete by --resume.
+    import os
+    tmp_summary = output_dir / "run_summary.json.partial"
+    tmp_summary.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    os.replace(tmp_summary, output_dir / "run_summary.json")
     print("\n=== T12 EXPERIMENTO COMPLETADO ===")
     print(json.dumps(summary, indent=2, ensure_ascii=False))
     print("\nMétricas de test:")

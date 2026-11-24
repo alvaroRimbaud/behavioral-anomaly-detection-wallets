@@ -2,6 +2,7 @@
 from __future__ import annotations
 import argparse
 import itertools
+import math
 import json
 from pathlib import Path
 import numpy as np
@@ -11,7 +12,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 def analyze(root:Path,out:Path):
-    seeds=sorted(x for x in root.glob('seed_*') if (x/'run_summary.json').is_file() and (x/'metrics_global.csv').is_file())
+    seeds=sorted(x for x in root.glob('seed_*') if (x/'run_summary.json').is_file() and (x/'metrics_global.csv').is_file() and (x/'scores_test_all_models.csv').is_file())
     if not seeds: raise ValueError('No hay semillas completas para análisis.')
     out.mkdir(parents=True,exist_ok=True)
     info=[];frames=[];buds=[];configs=[]
@@ -34,9 +35,23 @@ def analyze(root:Path,out:Path):
         if not {'raw','raw+individualizadas'}.issubset(pivot.columns):continue
         diff=(pivot['raw+individualizadas']-pivot['raw']).dropna().values
         delta=float(np.mean(diff))
-        p=float(np.mean([np.mean(diff*np.asarray(sign))>=delta-1e-12 for sign in itertools.product([-1,1],repeat=len(diff))])) if len(diff)>=2 else np.nan
-        # Exact sign-flip one-sided p. Only descriptive in preliminary pilots.
-        effects.append({'comparison':f'{model} híbrido - raw','n_seeds':len(diff),'delta_mean':delta,'delta_median':float(np.median(diff)),'relative_improvement_pct':float(100*delta/pivot['raw'].mean()),'p_signflip_onesided':p if len(diff)>=5 else np.nan,'decision':'Evaluación definitiva' if len(diff)>=5 and consistency and info[0]['n_users']==1000 and info[0]['tuning_profile']=='full' and info[0]['bootstrap_iterations']>=1000 else 'Piloto: inferencia final no aplicable'})
+        # Exact two-sided sign-flip test on seed-level paired differences.
+        # With 5 seeds the smallest attainable two-sided p is 2/32=0.0625:
+        # therefore p<.05 is IMPOSSIBLE with this exact test, even when all
+        # five effects have the same sign. Report effect sizes and user-level
+        # bootstrap per seed; do not falsely claim a significant seed-level test.
+        signs = np.asarray(list(itertools.product([-1,1],repeat=len(diff))),float) if 1<len(diff)<=16 else None
+        p = float(np.mean(np.abs(signs@diff / len(diff)) >= abs(delta)-1e-12)) if signs is not None else np.nan
+        try:
+            r0=float(pivot['raw'].mean())
+            pct=float(100*delta/r0) if abs(r0)>1e-12 else float('nan')
+        except Exception:
+            pct=float('nan')
+        effects.append({'comparison':f'{model} híbrido - raw','n_seeds':len(diff),
+             'delta_mean':delta,'delta_median':float(np.median(diff)),
+             'relative_improvement_pct':pct,'p_signflip_twosided_exact':p,
+             'limitation':'n=5 implica mínimo p bilateral exacto 0.0625' if len(diff)==5 else 'n de semillas reducido',
+             'decision':'Descriptivo multisemilla; contrastar incertidumbre por usuario; no declarar significancia automática'})
     pd.DataFrame(effects).to_csv(out/'ablacion_efectos.csv',index=False)
     if buds:pd.concat(buds,ignore_index=True).to_csv(out/'precision_at_k_por_semilla.csv',index=False)
     if configs:pd.concat(configs,ignore_index=True).to_csv(out/'configuraciones_seleccionadas.csv',index=False)
@@ -48,7 +63,7 @@ def analyze(root:Path,out:Path):
             ax.plot(x,y,marker='o',label=model)
     ax.set_ylabel('PR-AUC medio');ax.set_title(f'Ablación ({n} semillas, {info[0]["n_users"]} usuarios; {info[0]["tuning_profile"]})')
     ax.legend();ax.grid(alpha=.2);fig.tight_layout();fig.savefig(out/'ablacion_pr_auc.png',dpi=160);plt.close(fig)
-    status={'n_seeds_complete':n,'n_users_per_seed':info[0]['n_users'],'tuning_profile':info[0]['tuning_profile'],'bootstrap_iterations':info[0]['bootstrap_iterations'],'same_conditions':consistency,'is_definitive':bool(n==5 and consistency and info[0]['n_users']==1000 and info[0]['tuning_profile']=='full' and info[0]['bootstrap_iterations']>=1000),'note':'No inferir hipótesis definitiva si is_definitive=false; se conserva el resultado real como piloto.'}
+    status={'n_seeds_complete':n,'n_users_per_seed':info[0]['n_users'],'tuning_profile':info[0]['tuning_profile'],'bootstrap_iterations':info[0]['bootstrap_iterations'],'same_conditions':consistency,'is_definitive':bool(n==5 and consistency and info[0]['n_users']>=500 and info[0]['tuning_profile']=='full' and info[0]['bootstrap_iterations']>=1000),'note':'Definitivo solo con escala preregistrada y desviación documentada si <1000 usuarios; p bilateral exacto de 5 semillas no puede ser <.05. No inferir con is_definitive=false.'}
     (out/'estado_analisis.json').write_text(json.dumps(status,indent=2,ensure_ascii=False))
     print(status)
 if __name__=='__main__':

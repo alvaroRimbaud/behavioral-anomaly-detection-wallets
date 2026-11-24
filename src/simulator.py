@@ -160,6 +160,7 @@ def _generate_normal_rows(rng: np.random.Generator, profile: dict, phase: str, n
             "is_anomaly": 0,
             "anomaly_type": "normal",
             "target_anomaly_intensity": 0.0,
+            "target_intensity_band": "normal",
             "anomaly_intensity": 0.0,
             "anomaly_breadth": 0,
             "changed_dimensions": "",
@@ -274,27 +275,29 @@ def _inject_anomalies(df: pd.DataFrame, baselines: Dict[str, dict], rng: np.rand
     dimensions = np.array(["amount", "hour", "frequency", "recipient", "device", "location"])
     user_index_map = {uid: int(uid[1:]) for uid in df["user_id"].unique()}
 
-    selected_indices: List[int] = []
+    # Pre-register bands and allocate close-to-equal target counts WITHIN each
+    # temporal phase, before any scores or outcomes exist. Achieved-D strata may
+    # still be imbalanced due to discrete novelty categories; report them as-is.
+    strata = [("baja", 0.18, 0.33), ("media", 0.34, 0.66), ("alta", 0.67, 0.96)]
+    targets_by_index: Dict[int, Tuple[str, float]] = {}
     for phase, rate in [("validation", rate_val), ("test", rate_test)]:
         candidates = df.index[df["phase"] == phase].to_numpy()
         n = max(1, int(round(len(candidates) * rate)))
         picked = rng.choice(candidates, size=n, replace=False)
-        selected_indices.extend(int(i) for i in picked)
-
-    # Pre-register intensity strata in equal widths for descriptive analysis; D remains continuous.
-    strata = [(0.18, 0.33), (0.34, 0.66), (0.67, 0.96)]
-    # Shuffle labels so each phase gets a mix of difficulty levels.
-    rng.shuffle(selected_indices)
+        bands = np.resize(np.arange(len(strata)), n)
+        rng.shuffle(bands)
+        for idx, band in zip(picked, bands):
+            name, lo, hi = strata[int(band)]
+            targets_by_index[int(idx)] = (name, float(rng.uniform(lo, hi)))
 
     # Work user by user so frequency mutations can reference the previous observed timestamp.
-    selected_set = set(selected_indices)
+    selected_set = set(targets_by_index)
     for uid, group in df.groupby("user_id", sort=False):
         group = group.sort_values("timestamp")
         prev_ts: pd.Timestamp | None = None
         for idx, row in group.iterrows():
             if idx in selected_set:
-                stratum = strata[int(rng.integers(0, len(strata)))]
-                target = float(rng.uniform(*stratum))
+                target_band, target = targets_by_index[int(idx)]
                 k = int(rng.choice([1, 2, 3], p=[0.48, 0.34, 0.18]))
                 dims = list(rng.choice(dimensions, size=k, replace=False))
                 mutated, achieved = _mutate_anomaly(
@@ -315,6 +318,7 @@ def _inject_anomalies(df: pd.DataFrame, baselines: Dict[str, dict], rng: np.rand
                 df.loc[idx, "is_anomaly"] = 1
                 df.loc[idx, "anomaly_type"] = "ATO"
                 df.loc[idx, "target_anomaly_intensity"] = target
+                df.loc[idx, "target_intensity_band"] = target_band
                 df.loc[idx, "anomaly_intensity"] = D
                 df.loc[idx, "anomaly_breadth"] = k
                 df.loc[idx, "changed_dimensions"] = "|".join(sorted(dims))
