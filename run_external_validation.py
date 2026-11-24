@@ -14,7 +14,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-from collections import Counter, defaultdict, deque
+from collections import Counter, defaultdict
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +22,7 @@ import pandas as pd
 from sklearn.metrics import average_precision_score
 from sklearn.preprocessing import StandardScaler
 
-from run_demo import _select_if, _select_ae, _select_lof, _temporal_internal_holdout
+from run_demo import _select_if, _select_ae, _select_lof
 from src.models import set_seed, iforest_scores, lof_scores
 from src.evaluation import (
     metrics_at_threshold, choose_threshold, precision_at_alert_budgets,
@@ -87,7 +87,7 @@ def load_native(path: Path, schema: str, max_rows: int = 0,
     frame["step"] = pd.to_numeric(frame["step"], errors="coerce")
     frame["amount"] = pd.to_numeric(frame["amount"], errors="coerce")
     frame["label"] = pd.to_numeric(frame["label"], errors="coerce")
-    frame = frame.replace([np.inf, -np.inf], np.nan).dropna(subset=["step", "amount", "label"])
+    frame = frame.replace([np.inf, -np.inf], np.nan).dropna(subset=["step", "amount"])
     if not frame["label"].isin([0, 1]).all():
         raise ValueError("External original label column must be binary {0,1}.")
     frame["label"] = frame["label"].astype(int)
@@ -141,8 +141,8 @@ def build_external_features(frame: pd.DataFrame, min_warmup: int = 5) -> tuple[p
         amounts = g["amount"].to_numpy(float)
         steps = g["step"].to_numpy(float)
         hours = (steps.astype(int) % 24)
-        gaps = np.diff(steps)
-        gaps = gaps[gaps >= 0]
+        prior = np.searchsorted(steps, steps, side="left")
+        gaps = steps[prior > 0] - steps[prior[prior > 0] - 1]
         profiles[uid] = {
             "amount_median": float(np.median(amounts)),
             "amount_mad": _mad(amounts),
@@ -154,16 +154,16 @@ def build_external_features(frame: pd.DataFrame, min_warmup: int = 5) -> tuple[p
     # Sequential scan per sender: past history is visible, future is not.
     for uid, g in d.groupby("sender", sort=False):
         p = profiles[uid]
-        recent_24h = deque()
-        recent_1h = deque()
-        previous = None
-        for idx, row in g.sort_values(["step", "_row_order"]).iterrows():
-            step = float(row["step"])
-            while recent_1h and step - recent_1h[0] >= 1:
-                recent_1h.popleft()
-            while recent_24h and step - recent_24h[0] >= 24:
-                recent_24h.popleft()
-            gap = max(0.0, step - previous) if previous is not None else p["gap_median"]
+        ordered = g.sort_values(["step", "_row_order"])
+        steps = ordered["step"].to_numpy(float)
+        # Half-open windows [t-w, t) exclude every simultaneous transaction.
+        ends = np.searchsorted(steps, steps, side="left")
+        counts_1h = ends - np.searchsorted(steps, steps - 1)
+        counts_24h = ends - np.searchsorted(steps, steps - 24)
+        for pos, (idx, row) in enumerate(ordered.iterrows()):
+            step = steps[pos]
+            end = ends[pos]
+            gap = step - steps[end - 1] if end else p["gap_median"]
             hour = int(step) % 24
             diff = min(abs(hour - p["modal_hour"]), 24 - abs(hour - p["modal_hour"]))
             amount_dev = min(abs(float(row["amount"]) - p["amount_median"]) /
@@ -176,16 +176,13 @@ def build_external_features(frame: pd.DataFrame, min_warmup: int = 5) -> tuple[p
                 "hour_sin": float(np.sin(2 * np.pi * hour / 24)),
                 "hour_cos": float(np.cos(2 * np.pi * hour / 24)),
                 "time_since_last_tx": float(np.log1p(gap)),
-                "tx_count_last_1h": float(len(recent_1h)),
-                "tx_count_last_24h": float(len(recent_24h)),
+                "tx_count_last_1h": float(counts_1h[pos]),
+                "tx_count_last_24h": float(counts_24h[pos]),
                 "amount_deviation_user": float(amount_dev),
                 "hour_novelty_user": float(diff / 12),
                 "frequency_deviation_user": float(frequency_dev),
                 "recipient_novelty_user": _novelty(p["recipient_counts"], str(row["recipient"])),
             })
-            recent_1h.append(step)
-            recent_24h.append(step)
-            previous = step
     feat = pd.DataFrame(rows).sort_values("source_index").reset_index(drop=True)
     if feat.empty:
         raise ValueError("No users have enough early history. Full original MoMTSim is recommended.")
@@ -201,6 +198,15 @@ def build_external_features(frame: pd.DataFrame, min_warmup: int = 5) -> tuple[p
         "missing_from_original_t12": ["device_novelty_user", "location_novelty_user"],
     }
     return feat, summary
+
+
+def external_holdout(train: pd.DataFrame):
+    steps = np.sort(train["step"].unique())
+    if len(steps) < 2:
+        raise ValueError("AE holdout requires two distinct training steps")
+    cut = min(len(steps) - 1, max(1, round(0.8 * len(steps))))
+    earlier = train["step"] < steps[cut]
+    return train.loc[earlier].copy(), train.loc[~earlier].copy()
 
 
 def run_external(data: Path, dataset: str, output: Path, seed: int = 42,
@@ -220,7 +226,7 @@ def run_external(data: Path, dataset: str, output: Path, seed: int = 42,
         raise ValueError("Insufficient retained sample for train/validation/test.")
     if val["label"].nunique() < 2 or test["label"].nunique() < 2:
         raise ValueError("External validation/test lacks positive or negative original labels. Do not inject replacements.")
-    fit, es = _temporal_internal_holdout(train.rename(columns={"step": "timestamp"}))
+    fit, es = external_holdout(train)
     y_val = val["label"].to_numpy(int)
     y_test = test["label"].to_numpy(int)
     metrics, budgets, searches, scores_test = [], [], [], {}
